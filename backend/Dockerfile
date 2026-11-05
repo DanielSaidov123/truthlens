@@ -2,10 +2,13 @@ FROM node:22-alpine
 
 WORKDIR /app
 
-COPY package.json tsconfig.json ./
-COPY src ./src
+COPY package.json package-lock.json ./
+COPY prisma ./prisma
 
-RUN npm install
+RUN npm ci && npx prisma generate
+
+COPY tsconfig.json ./
+COPY src ./src
 
 EXPOSE 3000
 

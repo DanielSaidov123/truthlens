@@ -1,6 +1,6 @@
 # Dependencies
 node_modules/
-
+.env.example
 # Next.js
 .next/
 out/
@@ -8,6 +8,7 @@ out/
 # Python
 __pycache__/
 *.py[cod]
+.pytest_cache/
 .venv/
 venv/
 

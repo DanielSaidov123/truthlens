@@ -1,0 +1,90 @@
+// TruthLens database schema
+// Owner of writes: Backend (job creation) and Worker (claims, findings, status).
+// AI Service has no database access.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum JobStatus {
+  queued
+  processing
+  completed
+  failed
+}
+
+enum Verdict {
+  ai_generated
+  ai_edited
+  likely_real
+  inconclusive
+}
+
+model Job {
+  id               String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  status           JobStatus @default(queued)
+  verdict          Verdict?
+
+  // Retry budget: attempts is incremented on every claim.
+  attempts         Int       @default(0)
+  maxAttempts      Int       @default(3) @map("max_attempts")
+  nextAttemptAt    DateTime  @default(now()) @map("next_attempt_at") @db.Timestamptz(3)
+
+  // Lease fencing. A worker may only mutate a job while it holds this token.
+  leaseToken       String?   @map("lease_token") @db.Uuid
+  leaseExpiresAt   DateTime? @map("lease_expires_at") @db.Timestamptz(3)
+  lastHeartbeatAt  DateTime? @map("last_heartbeat_at") @db.Timestamptz(3)
+
+  errorCode        String?   @map("error_code")
+  errorMessage     String?   @map("error_message")
+
+  // Source metadata (upload API arrives in a later stage).
+  storageKey       String?   @map("storage_key")
+  originalFilename String?   @map("original_filename")
+  contentType      String?   @map("content_type")
+  sizeBytes        BigInt?   @map("size_bytes")
+
+  // Which provider produced the result. "mock" must never be presented as real.
+  provider         String?
+  model            String?
+
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt        DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+  startedAt        DateTime? @map("started_at") @db.Timestamptz(3)
+  completedAt      DateTime? @map("completed_at") @db.Timestamptz(3)
+
+  findings         Finding[]
+
+  @@index([status, nextAttemptAt])
+  @@index([status, leaseExpiresAt])
+  @@index([createdAt])
+  @@map("jobs")
+}
+
+model Finding {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  jobId       String   @map("job_id") @db.Uuid
+  // Deterministic key built by the worker from the finding payload.
+  // Uniqueness is enforced by PostgreSQL, not by application transactions.
+  dedupeKey   String   @map("dedupe_key")
+  code        String
+  title       String
+  description String?
+  startSec    Float    @map("start_sec")
+  endSec      Float    @map("end_sec")
+  confidence  Float?
+  severity    String?
+  evidence    Json?
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+
+  job         Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  @@unique([jobId, dedupeKey])
+  @@index([jobId])
+  @@map("findings")
+}

@@ -1,0 +1,10 @@
+{
+  "mcp": {
+    "servers": {
+      "atlassian": {
+        "type": "remote",
+        "url": "https://mcp.atlassian.com/v2/mcp"
+      }
+    }
+  }
+}
