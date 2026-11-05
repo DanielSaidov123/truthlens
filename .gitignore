@@ -1,0 +1,25 @@
+# Dependencies
+node_modules/
+
+# Next.js
+.next/
+out/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Environment
+.env
+.env.local
+
+# Logs / OS
+*.log
+.DS_Store
+Thumbs.db
+
+# Build artifacts
+dist/
+build/
